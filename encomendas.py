@@ -30,7 +30,7 @@ for encomenda in lista_encomendas:
     
     # 3. A REGRA DE NEGÓCIO MATEMÁTICA (if/else)
     prazo = encomenda["prazo_prometido_dias"]
-    decorrido = encomendadiaz = encomenda["dias_decorridos_entrega"]
+    decorrido = encomenda["dias_decorridos_entrega"]
     
     if decorrido > prazo:
         status = "ELEGÍVEL PARA REEMBOLSO (Atrasado)"

@@ -1,0 +1,4 @@
+id,codigo_rastreio,transportadora,prazo_prometido_dias,dias_decorridos_entrega
+ENC-501,BR111111111,Correios,6,9
+ENC-502,BR222222222,Jadlog,8,5
+ENC-503,BR333333333,Loggi,5,10
