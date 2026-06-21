@@ -23,7 +23,7 @@ def home():
 def processar_reembolso_web(encomenda_id: str):
     try:
         # A. Consulta a Supabase para buscar a encomenda específica
-        resposta_db = supabase.table("encomendas").select("*").eq("ID", encomenda_id).execute()
+        resposta_db = supabase.table("encomendas").select("*").eq("id", encomenda_id).execute()
         
         if not resposta_db.data:
             raise HTTPException(status_code=404, detail="Encomenda não localizada na Supabase.")
