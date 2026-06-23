@@ -127,6 +127,37 @@ def gerar_checkout_automatico(token_usuario: str, valor_frete_recuperado: float)
         
     except Exception as e:
         raise HTTPException(status_code=401, detail=f"Erro de cibersegurança: {e}")
+# 💳 ROTA WEB 6: WEBHOOK OFICIAL LEMON SQUEEZY (LIBERAÇÃO AUTOMÁTICA NA SUPABASE)
+@app.post("/webhook/lemonsqueezy")
+async def receber_notificacao_pagamento_lemon(request: Request):
+    try:
+        # 1. Captura os dados brutos enviados pelo servidor da Lemon Squeezy
+        dados_brutos = await request.body()
+        
+        # 2. Transforma o sinal de rede em um dicionário Python legível
+        import json
+        payload = json.loads(dados_brutos)
+        
+        # 3. LÓGICA DE LIBERAÇÃO: Verifica se o evento recebido é de uma ordem de pagamento concluída
+        event_name = payload.get("meta", {}).get("event_name")
+        
+        if event_name == "order_created":
+            # Recupera o ID único (UUID) do usuário que amarramos na linha 118 no momento do checkout
+            uuid_cliente = payload.get("data", {}).get("attributes", {}).get("custom_data", {}).get("user_id")
+            
+            if uuid_cliente:
+                print(f"🍋 Lemon Squeezy: Pagamento Confirmado para o usuário UUID: {uuid_cliente}")
+                
+                # 4. Atualiza a tabela na nuvem da Supabase para liberar o robô instantaneamente
+                supabase.table("encomendas").update({"status_pagamento": "PAGO"}).eq("user_id", uuid_cliente).execute()
+                
+                return {"sucesso": True, "mensagem": "Acesso liberado automaticamente via Lemon Squeezy!"}
+                
+        return {"status": "Evento Lemon Squeezy recebido com sucesso."}
+        
+    except Exception as e:
+        # Escudo de proteção try/except ativo para segurança de transações
+        return {"sucesso": False, "erro_webhook_financeiro": str(e)}
 
 # Força a exposição da variável para a Vercel Serverless Architecture
 app = app
