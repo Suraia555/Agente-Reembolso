@@ -3,6 +3,10 @@ from fastapi import FastAPI, HTTPException
 from dotenv import load_dotenv
 from supabase import create_client, Client
 from openai import OpenAI
+from fastapi import UploadFile, File
+import csv
+import codecs
+
 # Importa o módulo de segurança que você acabou de criar
 from autenticacao import fazer_login_utilizador, criar_novo_utilizador, obter_link_login_google, obter_link_login_shopify
 
@@ -158,6 +162,50 @@ async def receber_notificacao_pagamento_lemon(request: Request):
     except Exception as e:
         # Escudo de proteção try/except ativo para segurança de transações
         return {"sucesso": False, "erro_webhook_financeiro": str(e)}
+
+# 🛍️ ROTA WEB 7: UPLOAD E PROCESSAMENTO AUTOMÁTICO DO CSV DA SHOPIFY
+@app.post("/upload/csv")
+async def receber_csv_shopify(token_usuario: str, file: UploadFile = File(...)):
+    try:
+        # 1. Valida a sessão do utilizador na nuvem via UUID para cibersegurança
+        usuario_atual = supabase.auth.get_user(token_usuario)
+        uuid_cliente = usuario_atual.user.id
+        
+        # 2. Lê o arquivo CSV enviado pelo navegador na memória RAM
+        arquivo_csv = csv.reader(codecs.iterdecode(file.file, 'utf-8'))
+        
+        # Pula a primeira linha do cabeçalho do arquivo Shopify
+        cabecalho = next(arquivo_csv)
+        
+        lista_encomendas_novas = []
+        
+        # 3. Varre o arquivo caçando os códigos de rastreio e transportadoras
+        for linha in arquivo_csv:
+            if len(linha) >= 3:
+                codigo = linha[0].strip()
+                transportadora = linha[1].strip()
+                
+                # Monta a estrutura técnica vinculando o dado ao UUID do dono da loja
+                encomenda = {
+                    "user_id": uuid_cliente,
+                    "codigo_rastreio": codigo,
+                    "transportadora": transportadora,
+                    "status": "ELEGÍVEL PARA REEMBOLSO"
+                }
+                lista_encomendas_novas.append(encomenda)
+        
+        # 4. Faz o Bulk Insert (Envio em Massa) direto para a nuvem da Supabase
+        if lista_encomendas_novas:
+            supabase.table("encomendas").insert(lista_encomendas_novas).execute()
+            
+        return {
+            "sucesso": True,
+            "mensagem": f"Ficheiro processado! {len(lista_encomendas_novas)} encomendas da Shopify foram importadas com segurança.",
+            "proprietario_uuid": uuid_cliente
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Erro ao processar o arquivo CSV da Shopify: {e}")
 
 # Força a exposição da variável para a Vercel Serverless Architecture
 app = app
