@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 from supabase import create_client, Client
 from openai import OpenAI
 # Importa o módulo de segurança que você acabou de criar
-from autenticacao import fazer_login_utilizador, criar_novo_utilizador
+from autenticacao import fazer_login_utilizador, criar_novo_utilizador, obter_link_login_google, obter_link_login_shopify
 
 # 1. Carrega todas as credenciais de cibersegurança
 load_dotenv()
@@ -83,5 +83,20 @@ def processar_reembolso_web(encomenda_id: str):
             "nota": "Escudo try/except ativo. Fluxo de dados validado com sucesso!"
         }
 
+# 🌐 ROTA WEB 3: BOTÃO DE LOGIN RÁPIDO COM O GOOGLE
+@app.get("/auth/google")
+def login_google_web():
+    link = obter_link_login_google()
+    if not link:
+        raise HTTPException(status_code=500, detail="Erro interno ao acionar o motor do Google.")
+    return {"url_redirecionamento": link}
+
+# 🛍️ ROTA WEB 4: BOTÃO DE CONEXÃO DIRETA COM A SHOPIFY DO CLIENTE
+@app.get("/auth/shopify")
+def login_shopify_web(shop_domain: str):
+    link = obter_link_login_shopify(shop_domain)
+    if not link:
+        raise HTTPException(status_code=500, detail="Erro interno ao acionar o motor da Shopify.")
+    return {"url_redirecionamento": link}
 # Força a exposição da variável para a Vercel Serverless Architecture
 app = app
