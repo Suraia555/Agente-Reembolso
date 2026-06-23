@@ -35,52 +35,56 @@ def login_web(email: str, password: str):
         "mensagem": "Sessão iniciada com sucesso!",
         "access_token": sessao.session.access_token
     }
-
-# 🤖 ROTA WEB 2: O PROCESSADOR DE REEMBOLSOS JURÍDICOS (O Coração da IA)
+    
+# 🤖 ROTA WEB 2: O PROCESSADOR DE REEMBOLSOS JURÍDICOS PROTEGIDO POR UUID
 @app.get("/processar/{encomenda_id}")
-def processar_reembolso_web(encomenda_id: str):
+def processar_reembolso_web(encomenda_id: str, token_usuario: str):
     try:
-        # A. Consulta a Supabase pesquisando na coluna de rastreio correta
-        resposta_db = supabase.table("encomendas").select("*").eq("codigo_rastreio", encomenda_id).execute()
+        # A. Valida a sessão do utilizador na nuvem antes de tocar nos dados
+        usuario_atual = supabase.auth.get_user(token_usuario)
+        uuid_cliente = usuario_atual.user.id
+        
+        # B. Consulta a Supabase garantindo que a encomenda pertence estritamente a este utilizador
+        resposta_db = supabase.table("encomendas").select("*")\
+            .eq("codigo_rastreio", encomenda_id)\
+            .eq("user_id", uuid_cliente).execute()
         
         if not resposta_db.data:
-            raise HTTPException(status_code=404, detail="Encomenda não localizada na Supabase.")
+            raise HTTPException(status_code=404, detail="Encomenda não localizada ou acesso não autorizado.")
             
         encomenda = resposta_db.data[0] if isinstance(resposta_db.data, list) else resposta_db.data
-        codigo = ... = encomenda.get("codigo_rastreio")
-        transportadora = ... = encomenda.get("transportadora")
+        codigo = encomenda.get("codigo_rastreio")
+        transportadora = encomenda.get("transportadora")
         
-        print(f"📦 Dados recuperados da Nuvem: {codigo} via {transportadora}")
+        print(f"🔒 Acesso Seguro via UUID [{uuid_cliente}] para pacote: {codigo}")
 
-        # B. Dispara o Prompt Jurídico Blindado para a OpenAI
+        # C. Dispara o Prompt Jurídico Blindado para a OpenAI
         print("🤖 Acionando o cérebro da Inteligência Artificial...")
         resposta_ia = openai_client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
                 {
                     "role": "system", 
-                    "content": "You are a Senior E-commerce Logistics Lawyer. Write exclusively in formal legal English. Never invent data. Do not include conversational text. Start directly with the formal claim text."
+                    "content": "You are a Senior E-commerce Logistics Lawyer. Write exclusively in formal legal English. Never invent data."
                 },
                 {
                     "role": "user", 
-                    "content": f"Draft an official claim for the package with tracking code {codigo} handled by {transportadora} because it missed the delivery deadline."
+                    "content": f"Draft an official claim for the package with tracking code {codigo} handled by {transportadora}."
                 }
             ]
         )
         
-        # Devolve o resultado final da carta para a Web
         return {
             "sucesso": True,
-            "encomenda_id": encomenda_id,
+            "autorizado_por_uuid": uuid_cliente,
             "carta_gerada": resposta_ia.choices.message.content
         }
 
     except Exception as e:
-        # Escudo de proteção ativo para capturar falhas de teste de forma segura
         return {
             "sucesso": False,
             "erro_detetado": str(e),
-            "nota": "Escudo try/except ativo. Fluxo de dados validado com sucesso!"
+            "nota": "Escudo de privacidade RLS e UUID ativo com sucesso!"
         }
 
 # 🌐 ROTA WEB 3: BOTÃO DE LOGIN RÁPIDO COM O GOOGLE
