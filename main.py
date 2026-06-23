@@ -35,7 +35,7 @@ def login_web(email: str, password: str):
         "mensagem": "Sessão iniciada com sucesso!",
         "access_token": sessao.session.access_token
     }
-    
+
 # 🤖 ROTA WEB 2: O PROCESSADOR DE REEMBOLSOS JURÍDICOS PROTEGIDO POR UUID
 @app.get("/processar/{encomenda_id}")
 def processar_reembolso_web(encomenda_id: str, token_usuario: str):
@@ -102,5 +102,31 @@ def login_shopify_web(shop_domain: str):
     if not link:
         raise HTTPException(status_code=500, detail="Erro interno ao acionar o motor da Shopify.")
     return {"url_redirecionamento": link}
+
+# 💳 ROTA WEB 5: CHECKOUT AUTOMATIZADO GLOBAL (INTEGRAÇÃO PAYONEER DIRETA VIA LEMON SQUEEZY)
+@app.get("/faturamento/checkout")
+def gerar_checkout_automatico(token_usuario: str, valor_frete_recuperado: float):
+    try:
+        # 1. Valida o utilizador na Supabase via UUID
+        usuario_atual = supabase.auth.get_user(token_usuario)
+        uuid_cliente = usuario_atual.user.id
+        
+        # 2. Calcula os 20% de comissão automática
+        comissao = valor_frete_recuperado * 0.20
+        
+        # 3. Gera o link de pagamento exclusivo do Lemon Squeezy em linha contínua
+        link_pagamento_global = f"https://lemonsqueezy.com{comissao:.2f}&custom_id={uuid_cliente}"
+        
+        # 4. Devolve a ordem de bloqueio/cobrança para a interface do site
+        return {
+            "bloqueado": True,
+            "motivo": "Aguardando pagamento de comissão de reembolso logístico",
+            "valor_comissao_usd": f"$ {comissao:.2f} USD",
+            "url_checkout": link_pagamento_global
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=f"Erro de cibersegurança: {e}")
+
 # Força a exposição da variável para a Vercel Serverless Architecture
 app = app
