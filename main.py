@@ -206,6 +206,83 @@ async def receber_csv_shopify(token_usuario: str, file: UploadFile = File(...)):
         
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Erro ao processar o arquivo CSV da Shopify: {e}")
+# 🤖 ROTA WEB 8: PROCESSAMENTO EM LOTE DE TODAS AS ENCOMENDAS DO UTILIZADOR
+@app.get("/processar/lote/todas")
+async def processar_todas_encomendas_usuario(token_usuario: str):
+    try:
+        # 1. Valida a sessão do utilizador na nuvem via UUID para cibersegurança
+        usuario_atual = supabase.auth.get_user(token_usuario)
+        uuid_cliente = usuario_atual.user.id
+        
+        # 2. Puxa apenas as encomendas desse cliente específico que ainda não foram processadas
+        resposta_db = supabase.table("encomendas").select("*")\
+            .eq("user_id", uuid_cliente)\
+            .eq("status", "ELEGÍVEL PARA REEMBOLSO").execute()
+            
+        encomendas_pendentes = resposta_db.data
+        
+        if not encomendas_pendentes:
+            return {"sucesso": True, "mensagem": "Nenhuma encomenda pendente de processamento encontrada."}
+            
+        print(f"🔥 Iniciando lote automatizado: {len(encomendas_pendentes)} pacotes encontrados para o UUID {uuid_cliente}")
+        
+        cartas_processadas_sucesso = 0
+        historico_lote = []
+        
+        # 3. O Loop de Alto Tráfego protegido com try/except individual (Airbag por encomenda)
+        for enc in encomendas_pendentes:
+            try:
+                codigo = enc.get("codigo_rastreio")
+                transportadora = enc.get("transportadora")
+                
+                # Dispara o Prompt Jurídico Blindado para a OpenAI para cada pacote do lote
+                resposta_ia = openai_client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=[
+                        {
+                            "role": "system", 
+                            "content": "You are a Senior E-commerce Logistics Lawyer. Write exclusively in formal legal English. Never invent data."
+                        },
+                        {
+                            "role": "user", 
+                            "content": f"Draft an official claim for the package with tracking code {codigo} handled by {transportadora}."
+                        }
+                    ]
+                )
+                
+                carta_texto = resposta_ia.choices.message.content
+                
+                # Atualiza o status desta encomenda específica na Supabase para evitar duplicidade de cobrança
+                supabase.table("encomendas").update({
+                    "status": "CONTESTAÇÃO DISPARADA",
+                    "status_pagamento": "AGUARDANDO_REEMBOLSO"
+                }).eq("id", enc.get("id")).execute()
+                
+                cartas_processadas_sucesso += 1
+                historico_lote.append({
+                    "codigo_rastreio": codigo,
+                    "status": "Sucesso",
+                    "mensagem_ia_gerada": "Carta guardada na nuvem."
+                })
+                
+            except Exception as erro_interno:
+                # Se uma encomenda falhar (ex: dado corrompido), o escudo não deixa o lote inteiro morrer!
+                historico_lote.append({
+                    "codigo_rastreio": enc.get("codigo_rastreio", "Desconhecido"),
+                    "status": "Falhou",
+                    "detalhe_erro": str(erro_interno)
+                })
+                continue
+                
+        return {
+            "sucesso": True,
+            "total_encontrado": len(encomendas_pendentes),
+            "processadas_com_sucesso": cartas_processadas_sucesso,
+            "resumo_execucao_lote": historico_lote
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Erro crítico no processamento em lote: {e}")
 
 # Força a exposição da variável para a Vercel Serverless Architecture
 app = app
