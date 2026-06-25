@@ -3,3 +3,4 @@ uvicorn
 supabase
 openai
 python-dotenv
+python-multipart
