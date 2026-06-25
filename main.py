@@ -7,8 +7,18 @@ from dotenv import load_dotenv
 from supabase import create_client, Client
 
 # Importa as funções dos teus módulos especializados
-from autenticacao import fazer_login_utilizador, criar_novo_utilizador, obter_link_login_google, obter_link_login_shopify
-from app import gerar_carta_contestacao_ia  # <-- Injeção do módulo utilitário de IA aqui
+from autenticacao import (
+    fazer_login_utilizador, 
+    criar_novo_utilizador, 
+    obter_link_login_google, 
+    obter_link_login_shopify,
+    solicitar_recuperacao_senha,  # <-- Novas funções adicionadas aqui
+    confirmar_nova_senha,
+    enviar_otp_login_rapido,
+    verificar_otp_login_rapido
+)
+from app import gerar_carta_contestacao_ia
+from seguranca_senhas import validar_senha_forte  # <-- Injeção do teu novo módulo de cibersegurança aqui
 
 # 1. Carrega todas as credenciais de cibersegurança
 load_dotenv()
@@ -68,6 +78,49 @@ def login_shopify_web(shop_domain: str):
     if not link:
         raise HTTPException(status_code=500, detail="Erro interno ao acionar o motor da Shopify.")
     return {"url_redirecionamento": link}
+# ROTA WEB 4B: SOLICITAR LINK DE RECUPERAÇÃO DE SENHA POR EMAIL
+@app.post("/auth/recuperar-senha/solicitar")
+def solicitar_link_recuperacao(email: str):
+    resposta = solicitar_recuperacao_senha(email)
+    if resposta is None:
+        raise HTTPException(status_code=400, detail="Erro ao processar pedido de recuperação.")
+    return {"sucesso": True, "mensagem": f"E-mail de redefinição enviado para {email}."}
+
+# ROTA WEB 4C: CONFIRMAR NOVA SENHA (COM ESCUDO ATIVO VIA NOVO MÓDULO)
+@app.post("/auth/recuperar-senha/confirmar")
+def redefinir_senha_usuario(nova_password: str):
+    # 🚨 BARREIRA INDUSTRIAL: O main.py usa o seguranca_senhas antes de processar!
+    if not validar_senha_forte(nova_password):
+        raise HTTPException(
+            status_code=400, 
+            detail="A nova senha não cumpre os requisitos de cibersegurança padrão global."
+        )
+        
+    resposta = confirmar_nova_senha(nova_password)
+    if resposta is None:
+        raise HTTPException(status_code=400, detail="Erro crítico ao atualizar a credencial na nuvem.")
+    return {"sucesso": True, "mensagem": "Senha redefinida com sucesso no ecossistema!"}
+
+# ROTA WEB 4D: ENVIAR LOGIN RÁPIDO SEM SENHA (OTP)
+@app.post("/auth/otp/enviar")
+def disparar_otp_usuario(email: str):
+    resposta = enviar_otp_login_rapido(email)
+    if resposta is None:
+        raise HTTPException(status_code=400, detail="Erro ao gerar token de acesso rápido.")
+    return {"sucesso": True, "mensagem": f"Token OTP enviado para {email}."}
+
+# ROTA WEB 4E: VERIFICAR TOKEN DE ACESSO RÁPIDO (OTP)
+@app.post("/auth/otp/verificar")
+def validar_otp_usuario(email: str, token_6_digitos: str):
+    sessao = verificar_otp_login_rapido(email, token_6_digitos)
+    if sessao is None:
+        raise HTTPException(status_code=401, detail="Token OTP inválido ou expirado.")
+    return {
+        "sucesso": True,
+        "mensagem": "Autenticação Passwordless confirmada!",
+        "access_token": sessao.session.access_token
+    }
+
 # =====================================================================
 # 📦 CAMADA 2: PROCESSAMENTO E INGESTÃO (CORE LOGÍSTICO)
 # =====================================================================
