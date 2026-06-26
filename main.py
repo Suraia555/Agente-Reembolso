@@ -6,6 +6,8 @@ from fastapi import FastAPI, HTTPException, UploadFile, File, Request
 from dotenv import load_dotenv
 from supabase import create_client, Client
 from autenticacao import deletar_conta_usuario_seguro
+from fastapi import Header  # Para capturar o idioma do navegador de forma nativa
+from tradutor_global import obter_texto_traduzido, detetar_idioma_requisicao
 
 # Importa as funções dos teus módulos especializados
 from autenticacao import (
@@ -56,11 +58,16 @@ def signup_web(email: str, password: str):
 
 # ROTA WEB 2: LOGIN SEGURO DO UTILIZADOR (GERAÇÃO DE TOKEN)
 @app.post("/auth/login")
-def login_web(email: str, password: str):
+def login_web(email: str, password: str, accept_language: str = Header(None)):  # <-- Adicionado accept_language aqui
+    # 1. Deteta automaticamente se o navegador do utilizador gringo está em en, pt, es ou fr
+    idioma = detetar_idioma_requisicao(accept_language)
+    
     sessao = fazer_login_utilizador(email, password)
     
     if sessao is None:
-        raise HTTPException(status_code=401, detail="Falha na autenticação. Verifique as credenciais.")
+        # 2. Busca a mensagem de erro traduzida do teu arquivo 'tradutor_global.py'
+        mensagem_erro = obter_texto_traduzido("erro_autenticacao", idioma)
+        raise HTTPException(status_code=401, detail=mensagem_erro)
         
     return {
         "sucesso": True,
