@@ -12,13 +12,16 @@ from autenticacao import (
     criar_novo_utilizador, 
     obter_link_login_google, 
     obter_link_login_shopify,
-    solicitar_recuperacao_senha,  # <-- Novas funções adicionadas aqui
+    solicitar_recuperacao_senha,
     confirmar_nova_senha,
     enviar_otp_login_rapido,
     verificar_otp_login_rapido
 )
 from app import gerar_carta_contestacao_ia
-from seguranca_senhas import validar_senha_forte  # <-- Injeção do teu novo módulo de cibersegurança aqui
+from seguranca_senhas import validar_senha_forte
+
+# Injeção do novo módulo de suporte e privacidade (Etapa 3)
+from suporte_identidade import recuperar_email_via_loja_shopify, mascarar_email_privacidade
 
 # 1. Carrega todas as credenciais de cibersegurança
 load_dotenv()
@@ -119,6 +122,34 @@ def validar_otp_usuario(email: str, token_6_digitos: str):
         "sucesso": True,
         "mensagem": "Autenticação Passwordless confirmada!",
         "access_token": sessao.session.access_token
+    }
+
+# ROTA WEB 4F: RECUPERAÇÃO DESCENTRALIZADA DE IDENTIDADE (PROVEDOR SHOPIFY)
+@app.get("/auth/recuperar-email/shopify")
+def recuperar_email_por_loja(dominio_shopify: str):
+    # A. Executa a busca reversa utilizando o módulo especializado
+    email_localizado = recuperar_email_via_loja_shopify(dominio_shopify)
+    
+    # B. Tratamento de exceções e escudos de infraestrutura
+    if email_localizado == "LOJA_NAO_ENCONTRADA":
+        raise HTTPException(
+            status_code=404, 
+            detail="Nenhum vínculo logístico localizado para o domínio inserido."
+        )
+    if email_localizado == "PERFIL_INCOMPLETO" or email_localizado.startswith("ERROR_INTERNAL"):
+        raise HTTPException(
+            status_code=500, 
+            detail="Erro interno de sincronização na nuvem do ecossistema."
+        )
+        
+    # C. Aplica o mascarador de privacidade padrão internacional antes de devolver ao navegador
+    email_protegido = mascarar_email_privacidade(email_localizado)
+    
+    return {
+        "sucesso": True,
+        "mensagem": "Identidade localizada de forma descentralizada!",
+        "loja_identificada": dominio_shopify,
+        "pista_email_proprietario": email_protegido
     }
 
 # =====================================================================
