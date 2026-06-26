@@ -20,9 +20,10 @@ from autenticacao import (
 )
 from app import gerar_carta_contestacao_ia
 from seguranca_senhas import validar_senha_forte
-
-# Injeção do novo módulo de suporte e privacidade (Etapa 3)
 from suporte_identidade import recuperar_email_via_loja_shopify, mascarar_email_privacidade
+
+# Injeção do novo módulo de infraestrutura de armazenamento digital
+from armazenamento_perfil import gerar_url_assinada_upload, obter_avatar_perfil_seguro
 
 # 1. Carrega todas as credenciais de cibersegurança
 load_dotenv()
@@ -162,6 +163,31 @@ def eliminar_conta_sistema(token_usuario: str):
         "sucesso": True, 
         "mensagem": "Conta removida com sucesso. Todos os dados pessoais foram destruídos e o e-mail banido."
     }
+# =====================================================================
+# 📁 CAMADA 1B: GESTÃO DE PERFIL E ARMAZENAMENTO DIGITAL (CDN ECOSYSTEM)
+# =====================================================================
+
+# ROTA WEB 4H: SOLICITAR AUTORIZAÇÃO TEMPORÁRIA DE ESCREVER NO STORAGE
+@app.post("/auth/perfil/avatar/upload-url")
+def obter_url_upload_avatar(token_usuario: str, extensao: str = "webp"):
+    resposta = gerar_url_assinada_upload(token_usuario, extensao)
+    if not resposta.get("sucesso"):
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Erro de infraestrutura ao alocar espaço na nuvem: {resposta.get('erro_detetado')}"
+        )
+    return resposta
+
+# ROTA WEB 4I: RECUPERAR LINK SEGURO DE LEITURA DO AVATAR VIA CDN
+@app.get("/auth/perfil/avatar/visualizar")
+def visualizar_avatar_perfil(token_usuario: str, caminho_remoto: str):
+    link_cdn = obter_avatar_perfil_seguro(token_usuario, caminho_remoto)
+    if link_cdn == "ACESSO_NEGADO":
+        raise HTTPException(
+            status_code=403, 
+            detail="Violação de segurança: Não tem permissão para aceder a este diretório binário."
+        )
+    return {"sucesso": True, "url_temporaria_visualizacao": link_cdn}
 
 # =====================================================================
 # 📦 CAMADA 2: PROCESSAMENTO E INGESTÃO (CORE LOGÍSTICO)
