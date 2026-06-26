@@ -1,6 +1,7 @@
 import os
 from dotenv import load_dotenv
 from supabase import create_client, Client
+from seguranca_anonimizacao import gerar_hash_email_lista_negra
 
 # 1. Carrega as credenciais de segurança do arquivo oculto .env
 load_dotenv()
@@ -40,6 +41,16 @@ def criar_novo_utilizador(email: str, password: str, nome: str):  # <-- Adiciona
     except Exception as e:
         print(f"❌ Erro Crítico no Registo: {e}")
         return None
+        # 🚨 ESCUDO ANTI-FRAUDE: CONSULTA DE LISTA NEGRA ANÓNIMA
+        hash_verificacao = gerar_hash_email_lista_negra(email)
+        consulta_lista_negra = supabase.table("lista_negra_usuarios")\
+            .select("id")\
+            .eq("email_hash", hash_verificacao)\
+            .execute()
+            
+        if consulta_lista_negra.data:
+            print("❌ Bloqueio de Segurança: Este utilizador removeu a conta anteriormente e está banido do ecossistema.")
+            return None
 
 # 4. FUNÇÃO 2: Fazer Login e gerar o Token de Acesso Seguro
 def fazer_login_utilizador(email: str, password: str):
@@ -197,4 +208,30 @@ def recuperar_email_via_loja_shopify(dominio_loja_shopify: str):
         return None
     except Exception as e:
         print(f"❌ Erro no fluxo descentralizado de recuperação: {e}")
+        return None
+def deletar_conta_usuario_seguro(token_usuario: str):
+    """
+    Deleta a conta do utilizador do Auth, o que apaga automaticamente os 
+    seus perfis e encomendas (Cascade) e joga o Hash do e-mail na lista negra.
+    """
+    try:
+        # A. Recupera os dados e o e-mail real do utilizador antes de apagar
+        usuario = supabase.auth.get_user(token_usuario)
+        uuid_cliente = usuario.user.id
+        email_real = usuario.user.email
+        
+        # B. Gera o Hash SHA-256 indestrutível do e-mail
+        hash_bloqueado = gerar_hash_email_lista_negra(email_real)
+        
+        # C. Insere o hash na lista negra usando a tabela da nuvem
+        supabase.table("lista_negra_usuarios").insert({"email_hash": hash_bloqueado}).execute()
+        
+        # D. Comando administrativo do Supabase para deletar fisicamente o UUID da autenticação core
+        # Nota: O uso de admin exige privilégios. Em arquitetura serverless, o delete pode ser feito via RPC ou service_role.
+        resposta = supabase.auth.admin.delete_user(uuid_cliente)
+        
+        print(f"🚨 Operação Concluída: Utilizador {uuid_cliente} deletado. E-mail anonimizado em lista negra.")
+        return resposta
+    except Exception as e:
+        print(f"❌ Erro crítico ao deletar conta com segurança: {e}")
         return None

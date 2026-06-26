@@ -5,6 +5,7 @@ import json
 from fastapi import FastAPI, HTTPException, UploadFile, File, Request
 from dotenv import load_dotenv
 from supabase import create_client, Client
+from autenticacao import deletar_conta_usuario_seguro
 
 # Importa as funções dos teus módulos especializados
 from autenticacao import (
@@ -150,6 +151,16 @@ def recuperar_email_por_loja(dominio_shopify: str):
         "mensagem": "Identidade localizada de forma descentralizada!",
         "loja_identificada": dominio_shopify,
         "pista_email_proprietario": email_protegido
+    }
+# ROTA WEB 4G: ELIMINAÇÃO DE CONTA COM ANONIMIZAÇÃO CRIPTOGRÁFICA (ANTI-CALOTE)
+@app.delete("/auth/conta/eliminar")
+def eliminar_conta_sistema(token_usuario: str):
+    resposta = deletar_conta_usuario_seguro(token_usuario)
+    if resposta is None:
+        raise HTTPException(status_code=400, detail="Não foi possível processar a eliminação segura da conta.")
+    return {
+        "sucesso": True, 
+        "mensagem": "Conta removida com sucesso. Todos os dados pessoais foram destruídos e o e-mail banido."
     }
 
 # =====================================================================
