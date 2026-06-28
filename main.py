@@ -25,9 +25,10 @@ from seguranca_senhas import validar_senha_forte
 from suporte_identidade import recuperar_email_via_loja_shopify, mascarar_email_privacidade
 from armazenamento_perfil import gerar_url_assinada_upload, obter_avatar_perfil_seguro
 from tradutor_global import obter_texto_traduzido, detetar_idioma_requisicao
-
-# Injeção do novo módulo autónomo para automação em tempo real (Shopify Webhook)
 from processador_webhook import processar_evento_webhook_shopify
+
+# Injeção do módulo avançado de Inteligência Vetorial (AI Copilot RAG)
+from copiloto_suporte import executar_consulta_rag_copilot
 
 # 1. Carrega todas as credenciais de cibersegurança
 load_dotenv()
@@ -447,6 +448,38 @@ async def receber_notificacao_pagamento_lemon(request: Request):
         
     except Exception as e:
         return {"sucesso": False, "erro_webhook_financeiro": str(e)}
+# =====================================================================
+# 🤖 CAMADA 4: COGNITIVA E ASSISTÊNCIA DE ALTA DISPONIBILIDADE
+# =====================================================================
+
+# ROTA WEB 10: CARRIERREFUND AI COPILOT GATEWAY (SISTEMA RAG VETORIAL)
+@app.post("/suporte/copilot/perguntar")
+async def consultar_copiloto_inteligente(pergunta: str, token_usuario: str, accept_language: str = Header(None)):
+    try:
+        # A. Valida a sessão do utilizador na nuvem antes de gastar recursos da API
+        usuario_atual = supabase.auth.get_user(token_usuario)
+        uuid_cliente = usuario_atual.user.id
+        
+        # B. Deteta dinamicamente o idioma para a IA responder na língua do lojista
+        idioma = detetar_idioma_requisicao(accept_language)
+        
+        print(f"🧠 AI Copilot: Processando consulta RAG para o UUID [{uuid_cliente}] no idioma [{idioma}].")
+        
+        # C. Invoca o cérebro vetorial assíncrono isolado no módulo copiloto_suporte
+        resposta_assistente = await executar_consulta_rag_copilot(pergunta, idioma)
+        
+        if "ERROR_VECTOR_GENERATION_FAILED" in resposta_assistente or "ERROR_COPILOT_FAILED" in resposta_assistente:
+            raise HTTPException(status_code=500, detail="Erro interno no motor de processamento vetorial.")
+            
+        return {
+            "sucesso": True,
+            "autorizado_por_uuid": uuid_cliente,
+            "pergunta_original": pergunta,
+            "resposta_copilot": resposta_assistente
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Falha de cibersegurança ou barramento RLS: {e}")
 
 # Força a exposição da variável para a Vercel Serverless Architecture
 app = app
