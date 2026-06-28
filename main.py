@@ -26,9 +26,10 @@ from suporte_identidade import recuperar_email_via_loja_shopify, mascarar_email_
 from armazenamento_perfil import gerar_url_assinada_upload, obter_avatar_perfil_seguro
 from tradutor_global import obter_texto_traduzido, detetar_idioma_requisicao
 from processador_webhook import processar_evento_webhook_shopify
-
-# Injeção do módulo avançado de Inteligência Vetorial (AI Copilot RAG)
 from copiloto_suporte import executar_consulta_rag_copilot
+
+# Injeção do módulo de Gamificação e Prova Social (Growth Layer)
+from sucesso_cliente import calcular_nivel_tubarao, formatar_evento_live_ticker
 
 # 1. Carrega todas as credenciais de cibersegurança
 load_dotenv()
@@ -480,6 +481,40 @@ async def consultar_copiloto_inteligente(pergunta: str, token_usuario: str, acce
         
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Falha de cibersegurança ou barramento RLS: {e}")
+# =====================================================================
+# 📈 CAMADA 5: EXPERIÊNCIA DO UTILIZADOR E RETENÇÃO (GROWTH LOGIC)
+# =====================================================================
+
+# ROTA WEB 11: CONSULTAR STATUS DE CRESCIMENTO E PRIVILÉGIOS DO CLIENTE
+@app.get("/customer/gamificacao/status")
+def obter_nivel_cliente(token_usuario: str):
+    try:
+        # 1. Valida a sessão do utilizador na nuvem via UUID
+        usuario_atual = supabase.auth.get_user(token_usuario)
+        uuid_cliente = usuario_atual.user.id
+        
+        # 2. Consulta a View de alta performance filtrando pelo UUID do utilizador
+        resposta_db = supabase.table("view_volume_utilizadores")\
+            .select("total_ganhas")\
+            .eq("user_id", uuid_cliente).execute()
+            
+        total_vitorias = 0
+        
+        # 🛡️ CORREÇÃO DO SDK: Lê o primeiro registo da lista se houver dados
+        if resposta_db.data and isinstance(resposta_db.data, list) and len(resposta_db.data) > 0:
+            total_vitorias = resposta_db.data[0].get("total_ganhas", 0)
+            
+        # 3. Calcula as métricas em memória RAM instantaneamente usando o sucesso_cliente
+        status_crescimento = calcular_nivel_tubarao(total_vitorias)
+        
+        return {
+            "sucesso": True,
+            "user_id": uuid_cliente,
+            "total_reembolsos_ganhos": total_vitorias,
+            "perfil_gamificado": status_crescimento
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Erro de infraestrutura ao computar nível: {e}")
 
 # Força a exposição da variável para a Vercel Serverless Architecture
 app = app
