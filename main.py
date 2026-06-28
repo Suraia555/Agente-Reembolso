@@ -23,9 +23,11 @@ from autenticacao import (
 from app import gerar_carta_contestacao_ia
 from seguranca_senhas import validar_senha_forte
 from suporte_identidade import recuperar_email_via_loja_shopify, mascarar_email_privacidade
-
-# Injeção do novo módulo de infraestrutura de armazenamento digital
 from armazenamento_perfil import gerar_url_assinada_upload, obter_avatar_perfil_seguro
+from tradutor_global import obter_texto_traduzido, detetar_idioma_requisicao
+
+# Injeção do novo módulo autónomo para automação em tempo real (Shopify Webhook)
+from processador_webhook import processar_evento_webhook_shopify
 
 # 1. Carrega todas as credenciais de cibersegurança
 load_dotenv()
@@ -284,6 +286,33 @@ async def receber_csv_shopify(token_usuario: str, file: UploadFile = File(...)):
         
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Erro ao processar o arquivo CSV da Shopify: {e}")
+
+# ROTA WEB 6B: WEBHOOK REAL TIME SHOPIFY (AUTOMAÇÃO INVISÍVEL DE DISPUTAS)
+@app.post("/webhook/shopify/orders")
+async def receber_notificacao_pedido_shopify(request: Request):
+    try:
+        # 1. Captura o payload bruto em JSON disparado pelos servidores da Shopify
+        dados_brutos = await request.body()
+        payload_shopify = json.loads(dados_brutos)
+        
+        # 2. Envia os dados para o módulo especializado processar autonomamente
+        resultado = await processar_evento_webhook_shopify(payload_shopify)
+        
+        if not resultado.get("sucesso"):
+            # Retorna um status 200 para a Shopify não ficar a tentar rebanhar o webhook em loop
+            return {"status": "ignorado", "motivo": resultado.get("motivo")}
+            
+        dados_finais = resultado.get("dados_encomenda")
+        
+        # 3. Nota de Engenharia: Em produção, o webhook descobre o UUID do cliente 
+        # cruzando o domínio da loja (X-Shopify-Shop-Domain) com a tabela de conexões.
+        # Para o teste de integridade estrutural, simulamos a persistência sob RLS:
+        print(f"🛒 Shopify Webhook: Pedido #{dados_finais['shopify_order_id']} mapeado e pronto para a Supabase.")
+        
+        return {"sucesso": True, "mensagem": "Evento da Shopify capturado e processado com soberania técnica."}
+        
+    except Exception as e:
+        return {"sucesso": False, "erro_webhook_logistico": str(e)}
 
 # =====================================================================
 # 💳 CAMADA 3: PROCESSAMENTO EM LOTE E FATURAMENTO (ANTI-CALOTE)
