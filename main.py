@@ -27,9 +27,10 @@ from armazenamento_perfil import gerar_url_assinada_upload, obter_avatar_perfil_
 from tradutor_global import obter_texto_traduzido, detetar_idioma_requisicao
 from processador_webhook import processar_evento_webhook_shopify
 from copiloto_suporte import executar_consulta_rag_copilot
-
-# Injeção do módulo de Gamificação e Prova Social (Growth Layer)
 from sucesso_cliente import calcular_nivel_tubarao, formatar_evento_live_ticker
+
+# Injeção do módulo avançado de Ciência de Dados (Logistics Predictive Analytics)
+from analise_preditiva import calcular_probabilidade_atraso_ml
 
 # 1. Carrega todas as credenciais de cibersegurança
 load_dotenv()
@@ -515,6 +516,43 @@ def obter_nivel_cliente(token_usuario: str):
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Erro de infraestrutura ao computar nível: {e}")
+# =====================================================================
+# 🔮 CAMADA 6: INTELIGÊNCIA PREDICTIVA E ANÁLISE DE DADOS (ML LAYER)
+# =====================================================================
+
+# ROTA WEB 12: MOTOR PREDITIVO DE ATRASOS (LOGISTICS PREDICTIVE ANALYTICS)
+@app.get("/analytics/preditivo/latencia")
+def obter_alerta_preventivo_rota(transportadora: str, token_usuario: str, pico_sazonal: bool = False):
+    try:
+        # 1. Valida a sessão do utilizador na nuvem via UUID
+        usuario_atual = supabase.auth.get_user(token_usuario)
+        uuid_cliente = usuario_atual.user.id
+        
+        # 2. Consulta a View de latência na nuvem para buscar o histórico da transportadora
+        resposta_db = supabase.table("view_latencia_transportadoras")\
+            .select("taxa_historica_atraso_porcento")\
+            .eq("transportadora", transportadora.strip()).execute()
+            
+        taxa_historica = 0.0
+        
+        # 🛡️ CORREÇÃO DO SDK: Lê o primeiro registo da lista se houver dados históricos
+        if resposta_db.data and isinstance(resposta_db.data, list) and len(resposta_db.data) > 0:
+            taxa_historica = float(resposta_db.data[0].get("taxa_historica_atraso_porcento", 0.0))
+            
+        # 3. Invoca o cérebro matemático isolado no analise_preditiva.py
+        previsao = calcular_probabilidade_atraso_ml(taxa_historica, pico_sazonal)
+        
+        print(f"🔮 Predictive: Insights gerados para UUID [{uuid_cliente}] sobre a transportadora [{transportadora}].")
+        
+        return {
+            "sucesso": True,
+            "autorizado_por_uuid": uuid_cliente,
+            "transportadora_analisada": transportadora,
+            "taxa_base_historica_porcento": taxa_historica,
+            "insights_preditivos": previsao
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Erro de processamento no motor de ML: {e}")
 
 # Força a exposição da variável para a Vercel Serverless Architecture
 app = app
