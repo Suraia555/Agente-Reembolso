@@ -24,13 +24,13 @@ from app import gerar_carta_contestacao_ia
 from seguranca_senhas import validar_senha_forte
 from suporte_identidade import recuperar_email_via_loja_shopify, mascarar_email_privacidade
 from armazenamento_perfil import gerar_url_assinada_upload, obter_avatar_perfil_seguro
-from tradutor_global import obter_texto_traduzido, detetar_idioma_requisicao
 from processador_webhook import processar_evento_webhook_shopify
 from copiloto_suporte import executar_consulta_rag_copilot
 from sucesso_cliente import calcular_nivel_tubarao, formatar_evento_live_ticker
-
-# Injeção do módulo avançado de Ciência de Dados (Logistics Predictive Analytics)
 from analise_preditiva import calcular_probabilidade_atraso_ml
+
+# Injeção do novo módulo de Auditoria Incorruptível (Ledger Criptográfico)
+from auditoria_imutavel import calcular_assinatura_bloco_ledger, gerar_certificado_selo_confianca
 
 # 1. Carrega todas as credenciais de cibersegurança
 load_dotenv()
@@ -553,6 +553,64 @@ def obter_alerta_preventivo_rota(transportadora: str, token_usuario: str, pico_s
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Erro de processamento no motor de ML: {e}")
+# =====================================================================
+# 🔐 CAMADA 7: CONFORMIDADE, COMPLIANCE E LEDGER IMUTÁVEL (AUDIT LAYER)
+# =====================================================================
+
+# ROTA WEB 13: EMISSÃO DO SELO DE CONFIANÇA E CONSULTA DE LOG IMUTÁVEL
+@app.post("/compliance/auditoria/registrar")
+def registrar_e_emitir_selo_auditoria(encomenda_id: str, acao: str, token_usuario: str):
+    try:
+        # 1. Valida a sessão do utilizador na nuvem via UUID
+        usuario_atual = supabase.auth.get_user(token_usuario)
+        uuid_cliente = usuario_atual.user.id
+        
+        # 2. Busca o último bloco registrado desse cliente para capturar o hash_bloco_anterior
+        ultimo_bloco = supabase.table("auditoria_ledger")\
+            .select("hash_bloco_atual")\
+            .eq("user_id", uuid_cliente)\
+            .order("created_at", desc=True)\
+            .limit(1).execute()
+            
+        hash_anterior = "0" * 64  # Hash Gênesis caso seja a primeira ação do cliente
+        
+        if ultimo_bloco.data and isinstance(ultimo_bloco.data, list) and len(ultimo_bloco.data) > 0:
+            hash_anterior = ultimo_bloco.data[0].get("hash_bloco_atual", "0" * 64)
+            
+        # 3. Calcula o novo Hash encadeado (Blockchain Style) em memória RAM
+        hash_atual = calcular_assinatura_bloco_ledger(hash_anterior, uuid_cliente, acao, encomenda_id)
+        
+        if hash_atual == "ERROR_HASH_GENERATION_FAILED":
+            raise HTTPException(status_code=500, detail="Erro interno ao criptografar o bloco de auditoria.")
+            
+        # 4. Grava o log imutável na tabela da nuvem do Supabase
+        resposta_insersao = supabase.table("auditoria_ledger").insert({
+            "user_id": uuid_cliente,
+            "encomenda_id": encomenda_id,
+            "acao_executada": acao,
+            "hash_bloco_anterior": hash_anterior,
+            "hash_bloco_atual": hash_atual
+        }).execute()
+        
+        if not resposta_insersao.data:
+            raise Exception("Falha ao gravar no livro de registro digital.")
+            
+        id_registro = resposta_insersao.data[0].get("id")
+        
+        # 5. Gera o Selo de Confiança Criptográfico público para relatórios judiciais
+        selo = gerar_certificado_selo_confianca(id_registro, hash_atual)
+        
+        print(f"🔐 Ledger: Bloco [{id_registro[:8]}] encadeado com sucesso para o UUID [{uuid_cliente}].")
+        
+        return {
+            "sucesso": True,
+            "autorizado_por_uuid": uuid_cliente,
+            "acao_registrada": acao,
+            "hash_bloco_encadeado": hash_atual,
+            "selo_confianca_emitido": selo
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Erro crítico no barramento de compliance: {e}")
 
 # Força a exposição da variável para a Vercel Serverless Architecture
 app = app
