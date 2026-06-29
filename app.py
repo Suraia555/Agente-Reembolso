@@ -1,11 +1,11 @@
 import os
 from dotenv import load_dotenv
-from openai import OpenAI
+from openai import AsyncOpenAI
 
 load_dotenv()
 
-# Inicializa o cliente isolado para o módulo de IA
-openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# Inicializa o cliente ASSÍNCRONO isolado para o módulo de IA (Alta Performance em Lote)
+openai_client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 async def gerar_carta_contestacao_ia(codigo_rastreio: str, transportadora: str) -> str:
     """
@@ -13,7 +13,8 @@ async def gerar_carta_contestacao_ia(codigo_rastreio: str, transportadora: str) 
     Gera contestações jurídicas blindadas contra a alucinação de dados.
     """
     try:
-        resposta = openai_client.chat.completions.create(
+        # O 'await' nativo liberta a linha de execução enquanto a OpenAI responde
+        resposta = await openai_client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
                 {
@@ -28,5 +29,5 @@ async def gerar_carta_contestacao_ia(codigo_rastreio: str, transportadora: str) 
         )
         return resposta.choices[0].message.content
     except Exception as e:
-        # Retorna um fallback seguro estruturado para não quebrar a execução do lote
+        # Mantém rigorosamente o teu fallback seguro estruturado para o loop do main.py
         return f"ERROR_IA_GENERATION_FAILED: {str(e)}"
