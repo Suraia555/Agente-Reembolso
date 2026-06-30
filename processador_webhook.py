@@ -34,13 +34,43 @@ async def processar_evento_webhook_shopify(payload_shopify: dict) -> dict:
         if not codigo_rastreio:
             return {"sucesso": False, "motivo": "Encomenda sem código de rastreio ativo na Shopify."}
             
-        # C. Simulação das métricas de latência logística (Padrão de Produção)
-        # Em produção, estes dados cruzam com as tags customizadas da app da Shopify
-        prazo_prometido = 5  # Padrão acordado no checkout gringo
-        dias_decorridos = 8  # Simulação de atraso detetado pelo webhook
+        # C. EXTRAÇÃO DA DATA REAL DA SHOPIFY (Substitui os números fixos!)
+        from datetime import datetime
         
-        # D. Determina o estado de elegibilidade baseado na matemática de atraso
-        status_logistico = "ELEGÍVEL PARA REEMBOLSO" if dias_decorridos > prazo_prometido else "ENTREGUE_NO_PRAZO"
+        # Captura a data em que o gringo comprou (ex: "2026-03-25T14:00:00Z")
+        created_at_shopify = payload_shopify.get("created_at", "")
+        
+        if created_at_shopify:
+            # Converte a string da Shopify para um objeto de data real do Python
+            # Corta o 'Z' ou fusos horários para simplificar a matemática pura
+            data_pedido = datetime.fromisoformat(created_at_shopify.replace("Z", "+00:00"))
+            data_atual = datetime.now(data_pedido.tzinfo)
+            
+            # Calcula em tempo real quantos dias o pacote já está em trânsito na vida real
+            dias_decorridos = (data_atual - data_pedido).days
+        else:
+            dias_decorridos = 0 # Fallback de segurança se a Shopify falhar no timestamp
+
+        # D. INTEGRAÇÃO COM O TEU MOTOR DE ML (Simulação de inputs da View da Supabase)
+        # Em produção, o webhook puxa estes 2 dados da tua 'view_latencia_transportadoras'
+        taxa_historica_db = 45.0   # Exemplo: 45% de atrasos históricos nesta rota
+        media_dias_db = 4.2        # Exemplo: Esta transportadora costuma demorar 4.2 dias
+        
+        # Invoca o teu motor preditivo passando os dados reais + se estamos em Black Friday/Natal
+        insights_ml = calcular_probabilidade_atraso_ml(
+            taxa_historica_transportadora=taxa_historica_db,
+            media_dias_historica=media_dias_db,
+            dias_pico_sazonal=True # Ativa o multiplicador de Machine Learning se for época alta
+        )
+        
+        prazo_previsto_pelo_ml = insights_ml.get("dias_estimados_pelo_ml", 5.0)
+        
+        # E. MATEMÁTICA PREDITIVA FINAL
+        # Se os dias que o pacote já leva na rua ultrapassarem a previsão do ML, dispara o estorno!
+        if dias_decorridos > prazo_previsto_pelo_ml:
+            status_logistico = "ELEGÍVEL PARA REEMBOLSO"
+        else:
+            status_logistico = "ENTREGUE_NO_PRAZO"
         
         # Nota de Engenharia: O webhook identifica o user_id procurando a conexão ativa
         # através do domínio da loja associado ou metadados de instalação
