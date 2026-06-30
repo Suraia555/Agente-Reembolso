@@ -28,9 +28,10 @@ from processador_webhook import processar_evento_webhook_shopify
 from copiloto_suporte import executar_consulta_rag_copilot
 from sucesso_cliente import calcular_nivel_tubarao, formatar_evento_live_ticker
 from analise_preditiva import calcular_probabilidade_atraso_ml
-
-# Injeção do novo módulo de Auditoria Incorruptível (Ledger Criptográfico)
 from auditoria_imutavel import calcular_assinatura_bloco_ledger, gerar_certificado_selo_confianca
+
+# Injeção do novo módulo de Cibersegurança Avançada (Zero-Knowledge Vault)
+from seguranca_vault import encriptar_credencial_transporte, desencriptar_credencial_transporte
 
 # 1. Carrega todas as credenciais de cibersegurança
 load_dotenv()
@@ -200,6 +201,80 @@ def visualizar_avatar_perfil(token_usuario: str, caminho_remoto: str):
             detail="Violação de segurança: Não tem permissão para aceder a este diretório binário."
         )
     return {"sucesso": True, "url_temporaria_visualizacao": link_cdn}
+# =====================================================================
+# 🔐 CAMADA 1C: COFRE DE CONHECIMENTO ZERO (ZERO-KNOWLEDGE VAULT)
+# =====================================================================
+
+# ROTA WEB 4J: SALVAR E CRIPTOGRAFAR CREDENCIAL DA TRANSPORTADORA NO COFRE
+@app.post("/vault/credenciais/salvar")
+def salvar_credencial_no_cofre(token_usuario: str, transportadora: str, credencial_pura: str):
+    try:
+        # A. Valida a sessão do utilizador na nuvem via UUID
+        usuario_atual = supabase.auth.get_user(token_usuario)
+        uuid_cliente = usuario_atual.user.id
+        
+        # B. Executa o algoritmo AES-256-GCM em memória RAM isolada
+        dados_cripto = encriptar_credencial_transporte(credencial_pura)
+        
+        if not dados_cripto.get("sucesso"):
+            raise HTTPException(status_code=500, detail="Falha crítica ao executar criptografia do Vault.")
+            
+        # C. Persiste o bloco binário indecifrável na nuvem do Supabase sob RLS
+        resposta_db = supabase.table("vault_credenciais").insert({
+            "user_id": uuid_cliente,
+            "transportadora": transportadora.strip(),
+            "encrypted_payload": dados__cripto.get("encrypted_payload"),
+            "nonce": dados__cripto.get("nonce"),
+            "tag": dados__cripto.get("tag")
+        }).execute()
+        
+        if not resposta_db.data:
+            raise Exception("Erro ao gravar os binários criptográficos no banco de dados.")
+            
+        print(f"🔒 Vault Secure: Credencial para {transportadora} trancada sob o UUID [{uuid_cliente[:8]}].")
+        return {
+            "sucesso": True,
+            "mensagem": f"Credencial da transportadora {transportadora} blindada com sucesso no cofre!"
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Erro de barramento ou cibersegurança no Vault: {e}")
+
+# ROTA WEB 4K: RECUPERAR E DECIFRAR CREDENCIAL (USADA INTERNAMENTE PELO ROBÔ DE SCRAPING)
+@app.get("/vault/credenciais/recuperar")
+def recuperar_credencial_do_cofre(token_usuario: str, transportadora: str):
+    try:
+        # A. Valida a sessão do utilizador na nuvem via UUID (Bloqueio RLS ativo)
+        usuario_atual = supabase.auth.get_user(token_usuario)
+        uuid_cliente = usuario_atual.user.id
+        
+        # B. Busca os metadados criptográficos na Supabase filtrando pelo UUID do utilizador
+        resposta_db = supabase.table("vault_credenciais").select("*")\
+            .eq("user_id", uuid_cliente)\
+            .eq("transportadora", transportadora.strip()).execute()
+            
+        if not resposta_db.data:
+            raise HTTPException(status_code=404, detail="Nenhuma credencial localizada para esta transportadora.")
+            
+        registro = resposta_db.data[0]
+        
+        # C. Invoca o decifrador injetando o Payload + Nonce + Tag recuperados da nuvem
+        credencial_aberta = desencriptar_credencial_transporte(
+            encrypted_payload=registro.get("encrypted_payload"),
+            nonce_b64=registro.get("nonce"),
+            tag_b64=registro.get("tag")
+        )
+        
+        if credencial_aberta == "ERROR_VAULT_DECRYPTION_FAILED":
+            raise HTTPException(status_code=400, detail="Falha catastrófica de integridade: Os dados foram corrompidos.")
+            
+        print(f"🔑 Vault Access: Credencial decifrada temporariamente em RAM para o robô de scraping.")
+        return {
+            "sucesso": True,
+            "transportadora": transportadora,
+            "credencial_autenticada_pura": credencial_aberta # Esta string viaja encriptada no túnel HTTPS nativo
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Erro crítico ao aceder ao cofre: {e}")
 
 # =====================================================================
 # 📦 CAMADA 2: PROCESSAMENTO E INGESTÃO (CORE LOGÍSTICO)
