@@ -19,18 +19,30 @@ supabase: Client = create_client(url, key)
 print("--- REQUISITO DE SEGURANÇA: MÓDULO SUPABASE AUTH ATIVADO ---")
 
 # 3. FUNÇÃO 1: Registar um novo utilizador na nuvem com metadados profissionais
-def criar_novo_utilizador(email: str, password: str, nome: str):  # <-- Adicionado o parâmetro 'nome' aqui
+def criar_novo_utilizador(email: str, password: str, nome: str):
     try:
-        # O comando .auth.sign_up cria o utilizador e injeta o nome nos metadados seguros (user_metadata)
+        # 🚨 RETIFICAÇÃO: O escudo anti-fraude agora executa no primeiro milissegundo!
+        hash_verificacao = gerar_hash_email_lista_negra(email)
+        consulta_lista_negra = supabase.table("lista_negra_usuarios")\
+            .select("id")\
+            .eq("email_hash", hash_verificacao)\
+            .execute()
+            
+        if consulta_lista_negra.data:
+            print("❌ Bloqueio de Segurança: Este utilizador removeu a conta anteriormente e está banido.")
+            return None
+
+        # O teu código de registo continua logo abaixo, intocado:
         resposta = supabase.auth.sign_up({
             "email": email,
             "password": password,
             "options": {
                 "data": {
-                    "full_name": nome  # <-- O nome fica guardado na nuvem sob a chave padrão do Supabase
+                    "full_name": nome
                 }
             }
         })
+
         # Verifica se a nuvem retornou algum erro interno antes de confirmar
         if hasattr(resposta, 'error') and resposta.error is not None:
             print(f"❌ Erro no Registo Supabase: {resposta.error.message}")
