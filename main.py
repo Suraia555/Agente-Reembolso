@@ -529,18 +529,26 @@ def obter_alerta_preventivo_rota(transportadora: str, token_usuario: str, pico_s
         uuid_cliente = usuario_atual.user.id
         
         # 2. Consulta a View de latência na nuvem para buscar o histórico da transportadora
+        # 🚨 RETIFICAÇÃO: Adicionada a coluna 'media_dias_historica' no select
         resposta_db = supabase.table("view_latencia_transportadoras")\
-            .select("taxa_historica_atraso_porcento")\
+            .select("taxa_historica_atraso_porcento, media_dias_historica")\
             .eq("transportadora", transportadora.strip()).execute()
             
         taxa_historica = 0.0
+        media_dias = 0.0  # 🚨 RETIFICAÇÃO: Variável de suporte inicial
         
-        # 🛡️ CORREÇÃO DO SDK: Lê o primeiro registo da lista se houver dados históricos
+        # 🛡️ O TEU ESCUDO DO SDK: Mantido 100% intacto, apenas extrai o novo dado
         if resposta_db.data and isinstance(resposta_db.data, list) and len(resposta_db.data) > 0:
             taxa_historica = float(resposta_db.data[0].get("taxa_historica_atraso_porcento", 0.0))
+            media_dias = float(resposta_db.data[0].get("media_dias_historica", 0.0)) # 🚨 RETIFICAÇÃO: Captura dinâmica
             
         # 3. Invoca o cérebro matemático isolado no analise_preditiva.py
-        previsao = calcular_probabilidade_atraso_ml(taxa_historica, pico_sazonal)
+        # 🚨 RETIFICAÇÃO: Agora passa a média de dias capturada da View para o modelo de ML
+        previsao = calcular_probabilidade_atraso_ml(
+            taxa_historica_transportadora=taxa_historica, 
+            media_dias_historica=media_dias, 
+            dias_pico_sazonal=pico_sazonal
+        )
         
         print(f"🔮 Predictive: Insights gerados para UUID [{uuid_cliente}] sobre a transportadora [{transportadora}].")
         
