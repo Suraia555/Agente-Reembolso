@@ -29,9 +29,11 @@ from copiloto_suporte import executar_consulta_rag_copilot
 from sucesso_cliente import calcular_nivel_tubarao, formatar_evento_live_ticker
 from analise_preditiva import calcular_probabilidade_atraso_ml
 from auditoria_imutavel import calcular_assinatura_bloco_ledger, gerar_certificado_selo_confianca
-
-# Injeção do novo módulo de Cibersegurança Avançada (Zero-Knowledge Vault)
 from seguranca_vault import encriptar_credencial_transporte, desencriptar_credencial_transporte
+
+# Injeção dos novos cérebros de Faturamento Enterprise e Growth orgânico
+from gerenciador_assinaturas import sincronizar_assinatura_e_bloqueios
+from motor_afiliados import registrar_vinculo_afiliado_inicial, validar_e_disparar_cronometro_cpa
 
 # 1. Carrega todas as credenciais de cibersegurança
 load_dotenv()
@@ -275,6 +277,132 @@ def recuperar_credencial_do_cofre(token_usuario: str, transportadora: str):
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Erro crítico ao aceder ao cofre: {e}")
+# =====================================================================
+# 👥 CAMADA 1D: MOTOR DE CRESCIMENTO E AFILIADOS CPA (GROWTH ENGINE)
+# =====================================================================
+
+# ROTA WEB 4L: GERAR LINK PARAMETRIZADO DE AFILIADO CORPORATIVO
+@app.get("/afiliados/gerar-link")
+def obter_link_afiliado_customizado(token_usuario: str):
+    try:
+        # A. Valida a sessão do utilizador na nuvem via UUID
+        usuario_atual = supabase.auth.get_user(token_usuario)
+        uuid_afiliado = usuario_atual.user.id
+        
+        # B. Constrói o link oficial parametrizado que o lojista vai divulgar
+        link_oficial = f"https://carrierrefund.com{uuid_afiliado}"
+        
+        print(f"👥 Growth: Link de afiliado gerado para UUID [{uuid_afiliado[:8]}].")
+        return {
+            "sucesso": True,
+            "afiliado_uuid": uuid_afiliado,
+            "link_promocional_cpa": link_oficial
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Erro ao gerar link de afiliado: {e}")
+
+# ROTA WEB 4M: EXTRAIR MÉTRICAS DE GANHOS DO DASHBOARD (A TUA TRAVA DE 15 DIAS)
+@app.get("/afiliados/painel-ganhos")
+def obter_metricas_afiliados_dashboard(token_usuario: str):
+    try:
+        # A. Valida a sessão do utilizador na nuvem via UUID
+        usuario_atual = supabase.auth.get_user(token_usuario)
+        uuid_afiliado = usuario_atual.user.id
+        
+        # B. Busca na nuvem todas as indicações feitas por este utilizador
+        resposta_db = supabase.table("parcerias_afiliados")\
+            .select("status_premio, valor_usd, data_validacao_premio")\
+            .eq("afiliado_id", uuid_afiliado).execute()
+            
+        dados = resposta_db.data or []
+        
+        # C. MATEMÁTICA ESTATÍSTICA DE RETENÇÃO EM MEMÓRIA RAM (15 Days Hold Filter)
+        from datetime import datetime, timezone, timedelta
+        
+        total_indicados = len(dados)
+        saldo_disponivel_saque = 0.0
+        saldo_retido_janela = 0.0  # Dinheiro que fica trancado visivelmente no Dashboard!
+        indicacoes_aguardando = 0
+        
+        data_atual_utc = datetime.now(timezone.utc)
+        
+        for item in dados:
+            status = item.get("status_premio")
+            valor = float(item.get("valor_usd", 5.00))
+            data_validacao_str = item.get("data_validacao_premio")
+            
+            if status == "PRONTO_PARA_SAQUE" and data_validacao_str:
+                # Converte a data de validação gravada na nuvem tirando o fuso horário
+                data_validacao = datetime.fromisoformat(data_validacao_str.replace("Z", "+00:00"))
+                
+                # 🚨 A TUA TRAVA DE SEGURANÇA COMERCIAL DE 15 DIAS
+                if data_atual_utc >= data_validacao + timedelta(days=15):
+                    saldo_disponivel_saque += valor
+                else:
+                    saldo_retido_janela += valor
+            elif status == "AGUARDANDO_VALIDACAO":
+                indicacoes_aguardando += 1
+                
+        return {
+            "sucesso": True,
+            "afiliado_uuid": uuid_afiliado,
+            "metricas": {
+                "total_lojistas_indicados": total_indicados,
+                "indicacoes_em_quarentena_antifraude": indicacoes_aguardando,
+                "saldo_retido_em_seguranca_usd": round(saldo_retido_janela, 2), # Exibe o hold de 15 dias
+                "saldo_liberado_para_saque_usd": round(saldo_disponivel_saque, 2), # Dinheiro real limpo
+                "moeda": "USD"
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Erro ao extrair métricas do painel de afiliados: {e}")
+# ROTA WEB 4N: CONSULTAR STATUS DO PLANO, LIMITES E PRIVILÉGIOS CONTRATUAIS
+@app.get("/faturamento/assinatura/status")
+def obter_privilegios_e_status_plano(token_usuario: str):
+    try:
+        # A. Valida a sessão do utilizador na nuvem via UUID
+        usuario_atual = supabase.auth.get_user(token_usuario)
+        uuid_cliente = usuario_atual.user.id
+        
+        # B. Busca os dados de faturamento e bloqueios gravados na nuvem
+        resposta_db = supabase.table("faturamento_assinaturas")\
+            .select("plano_nome, status_assinatura, limite_mensal_pacotes, comissao_success_fee, acesso_motor_preditivo, acesso_ledger_blockchain")\
+            .eq("user_id", uuid_cliente).execute()
+            
+        # C. ESTRUTURA DE FALLBACK SE FOR UM UTILIZADOR NOVO SEM ASSINATURA REGISTADA
+        # Por defeito, ele nasce no plano Starter gratuito de teste
+        dados_plano = {
+            "plano_nome": "STARTER (NÃO ATIVADO)",
+            "status_assinatura": "INATIVO",
+            "limite_mensal_pacotes": 200,
+            "comissao_success_fee_porcento": 20.0,
+            "funcionalidades_liberadas": {
+                "motor_preditivo_ml": False,
+                "ledger_blockchain_imutavel": False
+            }
+        }
+        
+        if resposta_db.data and len(resposta_db.data) > 0:
+            registro = resposta_db.data[0]
+            dados_plano = {
+                "plano_nome": registro.get("plano_nome", "STARTER"),
+                "status_assinatura": registro.get("status_assinatura", "INATIVO"),
+                "limite_mensal_pacotes": registro.get("limite_mensal_pacotes", 200),
+                "comissao_success_fee_porcento": float(registro.get("comissao_success_fee", 20.0)),
+                "funcionalidades_liberadas": {
+                    "motor_preditivo_ml": bool(registro.get("acesso_motor_preditivo", False)),
+                    "ledger_blockchain_imutavel": bool(registro.get("acesso_ledger_blockchain", False))
+                }
+            }
+            
+        print(f"💳 Billing: Privilégios contratuais extraídos para o cliente UUID [{uuid_cliente[:8]}].")
+        return {
+            "sucesso": True,
+            "user_id": uuid_cliente,
+            "assinatura_dashboard": dados_plano
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Erro ao extrair privilégios de faturamento: {e}")
 
 # =====================================================================
 # 📦 CAMADA 2: PROCESSAMENTO E INGESTÃO (CORE LOGÍSTICO)
